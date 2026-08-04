@@ -41,7 +41,9 @@ export async function startShare(
 
   await room.localParticipant.publishTrack(videoTrack, {
     source: Track.Source.ScreenShare,
-    simulcast: true,
+    // 单层高画质直出：关闭 Simulcast 多档降级（朋友小圈子 + 高带宽场景，避免观看端被
+    // 自动降到 0.6Mbps 低清档；多人跨网络差异大时再启用 simulcast）
+    simulcast: false,
     videoCodec: 'h264', // 第一版 H.264 保兼容（后续可协商 AV1/HEVC）
     videoEncoding: { maxBitrate, maxFramerate: 60 },
     degradationPreference: opts.mode === 'detail' ? 'maintain-resolution' : 'maintain-framerate',
