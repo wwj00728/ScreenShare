@@ -1,0 +1,25 @@
+# 依赖与构建产物
+node_modules/
+dist/
+dist-electron/
+dist-renderer/
+release/
+
+# 环境变量与密钥（服务器生成，含 LiveKit API Secret）
+.env
+.env.*
+!.env.example
+infra/data/
+
+# 临时/打包文件
+screenshare-deploy.tar.gz
+*.log
+
+# 本地工具与系统文件
+.workbuddy-ai/
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

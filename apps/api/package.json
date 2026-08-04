@@ -1,0 +1,21 @@
+{
+  "name": "@screenshare/api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ScreenShare 主业务 API：房间 / 邀请码 / LiveKit JWT（不处理媒体）",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "npx tsx src/server.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.1.0",
+    "fastify": "^5.2.0",
+    "livekit-server-sdk": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

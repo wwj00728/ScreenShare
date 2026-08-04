@@ -1,0 +1,67 @@
+{
+  "name": "screenshare",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ScreenShare 桌面客户端：一键屏幕分享 + 观看（Electron + React + TS）",
+  "main": "dist-electron/main/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --config src/renderer/vite.config.ts",
+    "dev:main": "tsc -p tsconfig.json --watch",
+    "dev:electron": "wait-on http://localhost:5173 dist-electron/main/main.js && env -u NODE_OPTIONS -u ELECTRON_RUN_AS_NODE cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron . --no-sandbox",
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "vite build --config src/renderer/vite.config.ts",
+    "build:main": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/renderer/tsconfig.json --noEmit",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac"
+  },
+  "dependencies": {
+    "livekit-client": "^2.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.screenshare.app",
+    "productName": "ScreenShare",
+    "files": [
+      "dist-electron/**/*",
+      "dist-renderer/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "ScreenShare 超清屏幕分享"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.video"
+    }
+  }
+}

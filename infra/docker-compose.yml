@@ -1,0 +1,48 @@
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"                    # 信令 (TCP)
+      - "7881:7881/tcp"                # TCP 兜底
+      - "50000-50200:50000-50200/udp"  # WebRTC 媒体 (UDP，必须放行)
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    env_file: .env
+    expose:
+      - "8080"                         # 仅 Caddy 内部反代，不对外
+    volumes:
+      - ./data:/data                   # SQLite 持久化
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - livekit
+      - api
+
+  subtitles:
+    build:
+      context: ..
+      dockerfile: apps/transcription-worker/Dockerfile
+    profiles: ["subtitles"]            # 可选：docker compose --profile subtitles up -d
+    env_file: .env
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
