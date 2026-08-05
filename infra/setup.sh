@@ -32,16 +32,26 @@ if ! swapon --show 2>/dev/null | grep -q swapfile; then
   grep -q swapfile /etc/fstab 2>/dev/null || echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 
-# ---------- 1. 安装 Docker ----------
+# ---------- 1. 安装 Docker（大陆环境用国内源） ----------
 if ! command -v docker >/dev/null 2>&1; then
-  echo "==> 安装 Docker..."
-  curl -fsSL https://get.docker.com | sh
+  echo "==> 安装 Docker（国内源）..."
+  curl -fsSL https://get.daocloud.io/docker | sh || {
+    echo "国内源失败，尝试官方源..."; curl -fsSL https://get.docker.com | sh; }
   systemctl enable docker 2>/dev/null || true
 fi
 if ! docker compose version >/dev/null 2>&1; then
   echo "==> 安装 docker compose 插件..."
   apt-get update -qq && apt-get install -y docker-compose-plugin
 fi
+# 配置国内 Docker 镜像加速 + 关闭 userland-proxy（大陆拉镜像/低配机防卡死）
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<EOF
+{
+  "registry-mirrors": ["https://docker.m.daocloud.io", "https://docker.1ms.run"],
+  "userland-proxy": false
+}
+EOF
+systemctl restart docker 2>/dev/null || true
 
 # ---------- 2. 生成密钥（已存在则复用，保证脚本幂等可重跑） ----------
 API_KEY="devkey"
