@@ -1,7 +1,7 @@
 // 业务 API 调用（房间 / 邀请码 / JWT）
 import type { RoomCreated, JoinResponse, RenewResponse } from '@shared/types';
 
-const DEFAULT_SERVER = 'https://screenshare.43.161.200.177.sslip.io';
+const DEFAULT_SERVER = 'http://47.92.119.165:8080'; // 张家口服务器（免备案直连模式）
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl') || DEFAULT_SERVER;

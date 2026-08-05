@@ -1,19 +1,26 @@
 #!/usr/bin/env bash
 # =============================================================
-# ScreenShare 服务器一键部署（腾讯云/阿里云轻量 · 香港 · Ubuntu 22.04）
+# ScreenShare 服务器一键部署（腾讯云/阿里云轻量 · Ubuntu 22.04）
 # 部署: LiveKit(SFU) + Node API(房间/邀请码/JWT) + Caddy(HTTPS)
-# 用法: bash setup.sh [公网IP]
+# 用法: bash setup.sh [公网IP] [模式]
+#   模式: domain = 域名HTTPS（默认，境外服务器免备案用 sslip.io）
+#        direct = 免备案IP直连（大陆服务器/未备案时用，不走 80/443）
 # =============================================================
 set -euo pipefail
 
 IP="${1:-$(curl -s4 --max-time 5 ifconfig.me || true)}"
+MODE="${2:-domain}"
 if [ -z "$IP" ]; then
   echo "错误: 无法自动获取公网 IP，请手动指定: bash setup.sh <公网IP>" >&2
   exit 1
 fi
 DOMAIN="screenshare.${IP}.sslip.io"
 echo "==> 公网 IP : ${IP}"
-echo "==> 域名    : https://${DOMAIN}  (sslip.io 免费动态域名，无需备案)"
+if [ "$MODE" = "direct" ]; then
+  echo "==> 模式    : 免备案直连 (API=http://${IP}:8080, LiveKit=ws://${IP}:7880)"
+else
+  echo "==> 模式    : 域名 HTTPS (https://${DOMAIN}，境外免备案)"
+fi
 
 # ---------- 0. 确保 swap（2G 内存机器防 OOM 死机） ----------
 if ! swapon --show 2>/dev/null | grep -q swapfile; then
@@ -63,9 +70,14 @@ EOF
 
 # ---------- 4. .env（compose / API / 字幕 Worker 共用） ----------
 mkdir -p data
+if [ "$MODE" = "direct" ]; then
+  LIVEKIT_URL_ENTRY="ws://${IP}:7880"
+else
+  LIVEKIT_URL_ENTRY="wss://${DOMAIN}"
+fi
 cat > .env <<EOF
 DOMAIN=${DOMAIN}
-LIVEKIT_URL=wss://${DOMAIN}
+LIVEKIT_URL=${LIVEKIT_URL_ENTRY}
 LIVEKIT_API_KEY=${API_KEY}
 LIVEKIT_API_SECRET=${API_SECRET}
 DB_PATH=/data/screenshare.db
@@ -91,21 +103,34 @@ EOF
 # ---------- 6. 串行预拉大镜像（低配机器防 OOM） ----------
 echo "==> 预拉取 livekit 镜像（可能需要几分钟，请耐心等待）..."
 docker pull livekit/livekit-server:latest
-echo "==> 预拉取 caddy 镜像..."
-docker pull caddy:2
-
-# ---------- 7. 启动 ----------
-echo "==> 构建并启动服务（首次约 2-5 分钟）..."
-docker compose up -d --build
+if [ "$MODE" = "direct" ]; then
+  # 免备案直连模式：不启动 Caddy，客户端直连 LiveKit(7880) 与 API(8080)
+  echo "==> 构建并启动服务（免备案直连模式）..."
+  docker compose up -d --build livekit api
+else
+  echo "==> 预拉取 caddy 镜像..."
+  docker pull caddy:2
+  echo "==> 构建并启动服务（首次约 2-5 分钟）..."
+  docker compose up -d --build
+fi
 
 echo ""
 echo "================ 部署完成 ================"
-echo "API 地址  : https://${DOMAIN}/api"
-echo "LiveKit   : wss://${DOMAIN}  (信令走 /rtc)"
-echo "健康检查  : https://${DOMAIN}/healthz"
-echo "=========================================="
-echo "重要: 腾讯云控制台 → 防火墙 放行:"
-echo "  TCP 80,443,7880,7881  以及  UDP 50000-60000"
+if [ "$MODE" = "direct" ]; then
+  echo "API 地址  : http://${IP}:8080/api"
+  echo "LiveKit   : ws://${IP}:7880  (媒体 UDP 50000-50200 / TCP 7881)"
+  echo "健康检查  : http://${IP}:8080/api/healthz"
+  echo "=========================================="
+  echo "重要: 云控制台 → 防火墙 放行:"
+  echo "  TCP 8080,7880,7881  以及  UDP 50000-50200"
+else
+  echo "API 地址  : https://${DOMAIN}/api"
+  echo "LiveKit   : wss://${DOMAIN}  (信令走 /rtc)"
+  echo "健康检查  : https://${DOMAIN}/healthz"
+  echo "=========================================="
+  echo "重要: 云控制台 → 防火墙 放行:"
+  echo "  TCP 80,443,7880,7881  以及  UDP 50000-50200"
+fi
 echo ""
 echo "可选: 字幕服务  docker compose --profile subtitles up -d"
 echo "       (需要 4G+ 内存，首次会下载 Whisper 模型)"
